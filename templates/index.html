@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#102a56">
+    <meta name="description" content="Check current weather and a five-day forecast for cities around the world.">
+    <title>SkyCast — Weather Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="container">
+        <header class="topbar">
+            <a class="brand" href="{{ url_for('home') }}" aria-label="SkyCast home">
+                <span class="brand-mark">☀</span>
+                <span>SkyCast</span>
+            </a>
+            <span class="topbar-label">YOUR WEATHER, AT A GLANCE</span>
+        </header>
+
+        <section class="hero">
+            <p class="eyebrow">WEATHER DASHBOARD</p>
+            <h1>Forecasts for wherever life takes you.</h1>
+            <p class="subtitle">Search any city to see current conditions and the next five days.</p>
+        </section>
+
+        <form method="POST" action="{{ url_for('home') }}" class="search-form">
+            <label for="city">Search location</label>
+            <div class="search-row">
+                <span class="search-symbol" aria-hidden="true">⌕</span>
+                <input type="text" id="city" name="city" placeholder="Try Nairobi, London, Tokyo…" value="{{ city }}" maxlength="100" autocomplete="off" required>
+                <button type="submit">Search weather <span aria-hidden="true">→</span></button>
+            </div>
+        </form>
+
+        {% if error %}
+            <div class="message error" role="alert">{{ error }}</div>
+        {% endif %}
+
+        {% if weather %}
+            <section class="current-card" aria-label="Current weather">
+                <div class="current-main">
+                    <div>
+                        <p class="eyebrow light">CURRENT CONDITIONS</p>
+                        <h2>{{ weather.location.name }}{% if weather.location.country %}, {{ weather.location.country }}{% endif %}</h2>
+                        <p class="condition">{{ weather.description }}</p>
+                        <p class="updated">Local time: {{ weather.current_time_display }}</p>
+                    </div>
+                    <div class="current-icon" aria-label="{{ weather.description }}">{{ weather.icon }}</div>
+                </div>
+
+                <div class="temperature-line">
+                    <span class="temperature" data-celsius="{{ weather.current.temperature_2m }}">{{ "%.1f"|format(weather.current.temperature_2m) }}</span>
+                    <span class="unit">°C</span>
+                    <div class="unit-switch" role="group" aria-label="Temperature unit">
+                        <button type="button" class="unit-button active" data-unit="C" aria-pressed="true">°C</button>
+                        <button type="button" class="unit-button" data-unit="F" aria-pressed="false">°F</button>
+                    </div>
+                </div>
+
+                <div class="details">
+                    <article class="detail">
+                        <span class="detail-icon">🌡️</span>
+                        <div><p>Feels like</p><strong class="convert-temp" data-celsius="{{ weather.current.apparent_temperature }}">{{ "%.1f"|format(weather.current.apparent_temperature) }}°C</strong></div>
+                    </article>
+                    <article class="detail">
+                        <span class="detail-icon">💧</span>
+                        <div><p>Humidity</p><strong>{{ weather.current.relative_humidity_2m }}%</strong></div>
+                    </article>
+                    <article class="detail">
+                        <span class="detail-icon">💨</span>
+                        <div><p>Wind speed</p><strong>{{ "%.1f"|format(weather.current.wind_speed_10m) }} km/h</strong></div>
+                    </article>
+                </div>
+            </section>
+
+            <section class="forecast-section">
+                <div class="section-heading">
+                    <div>
+                        <p class="eyebrow">PLAN AHEAD</p>
+                        <h2>5-day forecast</h2>
+                    </div>
+                    <span class="section-note">Daily high / low</span>
+                </div>
+
+                <div class="forecast-grid">
+                    {% for day in weather.forecast %}
+                        <article class="forecast-card{% if day.is_today %} today{% endif %}">
+                            <h3>{% if day.is_today %}Today{% else %}{{ day.date }}{% endif %}</h3>
+                            <p class="forecast-icon" aria-label="{{ day.description }}">{{ day.icon }}</p>
+                            <p class="forecast-condition">{{ day.description }}</p>
+                            <div class="forecast-temps">
+                                <strong class="convert-temp" data-celsius="{{ day.max_temp }}">{{ "%.1f"|format(day.max_temp) }}°C</strong>
+                                <span class="convert-temp" data-celsius="{{ day.min_temp }}">{{ "%.1f"|format(day.min_temp) }}°C</span>
+                            </div>
+                        </article>
+                    {% endfor %}
+                </div>
+            </section>
+        {% else %}
+            {% if not error %}
+                <section class="welcome">
+                    <div class="welcome-art" aria-hidden="true">🌤️</div>
+                    <h2>Start with a city</h2>
+                    <p>Your current conditions and five-day forecast will appear here.</p>
+                    <div class="suggestions">
+                        <span>Popular searches</span>
+                        <button type="button" data-city="Nairobi">Nairobi</button>
+                        <button type="button" data-city="London">London</button>
+                        <button type="button" data-city="Tokyo">Tokyo</button>
+                    </div>
+                </section>
+            {% endif %}
+        {% endif %}
+
+        <footer>
+            <span>Made for curious explorers.</span>
+            <span>Weather data by <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a></span>
+        </footer>
+    </main>
+
+    <script>
+        (() => {
+            const unitButtons = document.querySelectorAll(".unit-button");
+            const mainTemperature = document.querySelector(".temperature");
+            const mainUnit = document.querySelector(".unit");
+            const convertedTemperatures = document.querySelectorAll(".convert-temp");
+
+            function formatTemperature(celsius, unit) {
+                const value = unit === "F" ? (Number(celsius) * 9 / 5) + 32 : Number(celsius);
+                return `${value.toFixed(1)}°${unit}`;
+            }
+
+            function setUnit(unit) {
+                if (mainTemperature && mainUnit) {
+                    const celsius = mainTemperature.dataset.celsius;
+                    const value = unit === "F" ? (Number(celsius) * 9 / 5) + 32 : Number(celsius);
+                    mainTemperature.textContent = value.toFixed(1);
+                    mainUnit.textContent = `°${unit}`;
+                }
+
+                convertedTemperatures.forEach(element => {
+                    element.textContent = formatTemperature(element.dataset.celsius, unit);
+                });
+
+                unitButtons.forEach(button => {
+                    const active = button.dataset.unit === unit;
+                    button.classList.toggle("active", active);
+                    button.setAttribute("aria-pressed", String(active));
+                });
+            }
+
+            unitButtons.forEach(button => {
+                button.addEventListener("click", () => setUnit(button.dataset.unit));
+            });
+
+            document.querySelectorAll("[data-city]").forEach(button => {
+                button.addEventListener("click", () => {
+                    const input = document.querySelector("#city");
+                    if (input) {
+                        input.value = button.dataset.city;
+                        input.form.requestSubmit();
+                    }
+                });
+            });
+        })();
+    </script>
+</body>
+</html>
